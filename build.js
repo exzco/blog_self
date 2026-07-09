@@ -150,7 +150,7 @@ marked.setOptions({ gfm: true, breaks: false });
 
 // ─── 主流程 ───────────────────────────────────────────────────────────────────
 function main() {
-    console.log('🔨 开始构建博客...\n');
+    console.log('🔨 开始构建博客...');
 
     // 确保 posts 目录存在
     if (!fs.existsSync(CONFIG.postsDir)) {
@@ -158,47 +158,73 @@ function main() {
         console.log('📁 已创建 posts/ 目录');
     }
 
-    // 清理并重建 dist/
-    if (fs.existsSync(CONFIG.distDir)) {
-        fs.rmSync(CONFIG.distDir, { recursive: true, force: true });
-    }
+    // 不再彻底删除整个 dist，只确保必要目录存在
     mkdirSync(CONFIG.distDir);
     mkdirSync(path.join(CONFIG.distDir, 'posts'));
 
-    // ── Step 1: 用 Tailwind CLI 生成最小化 CSS ────────────────────────────────
-    console.log('🎨 构建 Tailwind CSS...');
-    try {
-        execSync(
-            `npx tailwindcss -i src/input.css -o dist/style.css --minify`,
-            { cwd: __dirname, stdio: 'pipe' }
-        );
-        const cssSize = (fs.statSync(path.join(CONFIG.distDir, 'style.css')).size / 1024).toFixed(1);
-        console.log(`✅ Tailwind CSS → dist/style.css (${cssSize} KB)\n`);
-    } catch (e) {
-        console.error('❌ Tailwind CSS 构建失败:', e.stderr?.toString() || e.message);
-        process.exit(1);
+    // ── 获取模板及 CSS 源码的最新修改时间 ──
+    let maxTemplateMtime = 0;
+    const templateFiles = [
+        path.join(CONFIG.templateDir, 'article.html'),
+        path.join(CONFIG.templateDir, 'index.html'),
+        path.join(CONFIG.templateDir, 'about.html'),
+        path.join(__dirname, 'src', 'input.css')
+    ];
+    templateFiles.forEach(file => {
+        if (fs.existsSync(file)) {
+            const mtime = fs.statSync(file).mtimeMs;
+            if (mtime > maxTemplateMtime) maxTemplateMtime = mtime;
+        }
+    });
+
+    // ── Step 1: 用 Tailwind CLI 生成最小化 CSS (增量判断) ──
+    const distCssPath = path.join(CONFIG.distDir, 'style.css');
+    let needBuildCss = true;
+    if (fs.existsSync(distCssPath)) {
+        const cssMtime = fs.statSync(distCssPath).mtimeMs;
+        if (cssMtime > maxTemplateMtime) {
+            needBuildCss = false; // 模板及 CSS 源码未改变，无需重构
+        }
     }
 
-    // ── Step 2: 读取模板 ──────────────────────────────────────────────────────
+    if (needBuildCss) {
+        console.log('🎨 构建 Tailwind CSS...');
+        try {
+            execSync(
+                `npx tailwindcss -i src/input.css -o dist/style.css --minify`,
+                { cwd: __dirname, stdio: 'pipe' }
+            );
+            const cssSize = (fs.statSync(distCssPath).size / 1024).toFixed(1);
+            console.log(`✅ Tailwind CSS → dist/style.css (${cssSize} KB)`);
+        } catch (e) {
+            console.error('❌ Tailwind CSS 构建失败:', e.stderr?.toString() || e.message);
+            process.exit(1);
+        }
+    } else {
+        console.log('⚡ CSS 未发生变更，跳过构建');
+    }
+
+    // ── Step 2: 读取模板 ──
     const articleTemplate = fs.readFileSync(path.join(CONFIG.templateDir, 'article.html'), 'utf-8');
     const indexTemplate   = fs.readFileSync(path.join(CONFIG.templateDir, 'index.html'),   'utf-8');
     const aboutTemplate   = fs.readFileSync(path.join(CONFIG.templateDir, 'about.html'),   'utf-8');
 
-    // ── Step 3: 扫描并生成文章页 ──────────────────────────────────────────────
+    // ── Step 3: 扫描并生成文章页 (增量判断) ──
     const posts = [];
+    let buildCount = 0;
+    let skipCount = 0;
 
-    // 递归查找所有文章目录（支持任意深度嵌套）
+    // 递归查找所有文章目录
     const articleDirs = findArticleDirs(CONFIG.postsDir);
 
     for (const article of articleDirs) {
-        const folderName = path.basename(article.dir); // 用最终文件夹名作为 slug
+        const folderName = path.basename(article.dir);
         const raw = fs.readFileSync(article.mdPath, 'utf-8');
 
-        // 解析 Front Matter
+        // 解析 Front Matter (这个极快，每次都读以确保归档主页是最新的)
         const { data: fm, content: mdContent } = matter(raw);
         const title = (fm.title || '').trim() || folderName;
 
-        // date: 优先 Front Matter (published 或 date)，其次从文件夹名提取
         let date = '';
         const rawDate = fm.published || fm.date;
         if (rawDate) {
@@ -208,38 +234,62 @@ function main() {
             if (fallbackDate) date = fallbackDate;
         }
         const description = (fm.description || '').trim();
-
-        // slug 取文件夹名（已经是扁平结构，不含路径分隔符）
         const slug = folderName;
 
-        // MD → HTML → 加锚点 → 生成 TOC
-        let htmlContent = marked.parse(mdContent);
-        htmlContent = addHeadingIds(htmlContent);
-        const toc = generateToc(htmlContent);
+        posts.push({ title, date, description, slug, year: getYear(date) });
 
-        // 注入模板（文章页 base_path = ../../）
-        let articleHtml = articleTemplate
-            .replace(/\{\{base_path\}\}/g, '../../')
-            .replace(/\{\{slug\}\}/g,        slug)
-            .replace(/\{\{title\}\}/g,       escapeHtml(title))
-            .replace(/\{\{description\}\}/g, escapeHtml(description))
-            .replace(/\{\{date\}\}/g,         date)
-            .replace(/\{\{toc\}\}/g,          toc)
-            .replace(/\{\{content\}\}/g,      htmlContent);
+        // ── 检查文章源文件及同级资源的最新修改时间 ──
+        let maxSourceMtime = 0;
+        fs.readdirSync(article.dir).forEach(file => {
+            const filePath = path.join(article.dir, file);
+            const mtime = fs.statSync(filePath).mtimeMs;
+            if (mtime > maxSourceMtime) maxSourceMtime = mtime;
+        });
 
-        // 压缩 HTML
-        articleHtml = minifyHtml(articleHtml);
-
-        // 写出到 dist/posts/文件夹名/index.html
+        // ── 检查已生成的文章 HTML 是否是最新的 ──
         const postDistDir = path.join(CONFIG.distDir, 'posts', slug);
-        mkdirSync(postDistDir);
-        fs.writeFileSync(path.join(postDistDir, 'index.html'), articleHtml, 'utf-8');
+        const distHtmlPath = path.join(postDistDir, 'index.html');
+        let needBuildHtml = true;
 
-        // 复制图片等资源（跟 .md 同目录的非 .md 文件）
-        copyAssets(article.dir, postDistDir);
+        if (fs.existsSync(distHtmlPath)) {
+            const htmlMtime = fs.statSync(distHtmlPath).mtimeMs;
+            // 只有当生成的文件比源文件新，且比文章模板新时，才跳过构建
+            if (htmlMtime > maxSourceMtime && htmlMtime > maxTemplateMtime) {
+                needBuildHtml = false;
+            }
+        }
 
-        posts.push({ title, date, description, slug: folderName, year: getYear(date) });
-        console.log(`✅ 文章：posts/${folderName}/index.html — ${title}`);
+        if (needBuildHtml) {
+            // MD → HTML → 加锚点 → 生成 TOC
+            let htmlContent = marked.parse(mdContent);
+            htmlContent = addHeadingIds(htmlContent);
+            const toc = generateToc(htmlContent);
+
+            // 注入模板
+            let articleHtml = articleTemplate
+                .replace(/\{\{base_path\}\}/g, '../../')
+                .replace(/\{\{slug\}\}/g,        slug)
+                .replace(/\{\{title\}\}/g,       escapeHtml(title))
+                .replace(/\{\{description\}\}/g, escapeHtml(description))
+                .replace(/\{\{date\}\}/g,         date)
+                .replace(/\{\{toc\}\}/g,          toc)
+                .replace(/\{\{content\}\}/g,      htmlContent);
+
+            // 压缩 HTML
+            articleHtml = minifyHtml(articleHtml);
+
+            // 写出到目标目录
+            mkdirSync(postDistDir);
+            fs.writeFileSync(distHtmlPath, articleHtml, 'utf-8');
+
+            // 复制同目录下的图片等资源
+            copyAssets(article.dir, postDistDir);
+
+            buildCount++;
+            console.log(`🔨 重新构建：posts/${folderName}/index.html`);
+        } else {
+            skipCount++;
+        }
     }
 
     // 按日期降序排列
