@@ -240,18 +240,18 @@
     </div>
 
     <script>
-        // highlight.js 初始化
         document.addEventListener('DOMContentLoaded', function() {
-            // 动态修正图片路径以完美兼容 Clean URLs 和 file:// 本地双击预览
             if (window.location.protocol !== 'file:') {
                 const postSlug = '{{slug}}';
                 document.querySelectorAll('.article-body img').forEach(function(img) {
                     const src = img.getAttribute('src');
                     if (src && !/^(https?:|\/\/|\/)/i.test(src)) {
                         const cleanSrc = src.replace(/^\.\//, '');
-                        // 统一指向相对 posts 目录的绝对路径或同级相对路径
-                        img.src = `../posts/${postSlug}/${cleanSrc}`;
+                        img.src = `/posts/${postSlug}/${cleanSrc}`;
                     }
+                });
+                document.querySelectorAll('a[href="../index.html"]').forEach(function(a) {
+                    a.setAttribute('href', '/');
                 });
             }
 
@@ -265,6 +265,29 @@
             const headings = document.querySelectorAll('.article-body h2, .article-body h3, .article-body h4');
 
             if (tocLinks.length === 0 || headings.length === 0) return;
+
+            // 拦截目录链接点击事件，改用 JS 平滑滚动，解决顶部标题栏被顶出屏幕的问题
+            tocLinks.forEach(function(link) {
+                link.addEventListener('click', function(e) {
+                    const href = this.getAttribute('href');
+                    if (href && href.startsWith('#')) {
+                        e.preventDefault();
+                        const targetEl = document.querySelector(href);
+                        if (targetEl && mainScroll) {
+                            const containerTop = mainScroll.getBoundingClientRect().top;
+                            const elementTop = targetEl.getBoundingClientRect().top;
+                            // 计算相对于滚动容器的偏移量，留出 16px 的顶部 margin
+                            const targetScrollTop = elementTop - containerTop + mainScroll.scrollTop - 16;
+                            mainScroll.scrollTo({
+                                top: targetScrollTop,
+                                behavior: 'smooth'
+                            });
+                            // 保持 URL 哈希更新，但不触发页面跳转
+                            history.replaceState(null, null, href);
+                        }
+                    }
+                });
+            });
 
             function updateActiveToc() {
                 const scrollTop = mainScroll.scrollTop;
