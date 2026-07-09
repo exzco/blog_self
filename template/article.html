@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>wsh</title>
+    <meta name="description" content="{{description}}">
+    <!-- Tailwind purged CSS (built by Tailwind CLI) -->
+    <link rel="stylesheet" href="{{base_path}}style.css">
+    <!-- highlight.js: core + common languages only -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/go.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/java.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" defer></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            zoom: 1.1;
+        }
+        /* 隐藏滚动条但保留功能 */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* 文章内容排版 */
+        .article-body h2 {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: #09090b;
+            margin-top: 2.5rem;
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #e4e4e7;
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+        }
+        .article-body h2::before {
+            content: '';
+            display: inline-block;
+            width: 4px;
+            height: 20px;
+            background-color: #09090b;
+            border-radius: 9999px;
+            flex-shrink: 0;
+        }
+        .article-body h3 {
+            font-size: 0.9375rem;
+            font-weight: 600;
+            color: #18181b;
+            margin-top: 1.75rem;
+            margin-bottom: 0.5rem;
+        }
+        .article-body h4 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #27272a;
+            margin-top: 1.25rem;
+            margin-bottom: 0.375rem;
+        }
+        .article-body p {
+            font-size: 0.875rem;
+            color: #3f3f46;
+            line-height: 1.8;
+            margin-bottom: 0.875rem;
+        }
+        .article-body ul, .article-body ol {
+            font-size: 0.875rem;
+            color: #3f3f46;
+            padding-left: 1.5rem;
+            margin-bottom: 0.875rem;
+            line-height: 1.8;
+        }
+        .article-body ul { list-style-type: disc; }
+        .article-body ol { list-style-type: decimal; }
+        .article-body li { margin-bottom: 0.3rem; }
+        .article-body strong { color: #09090b; font-weight: 600; }
+        .article-body em { font-style: italic; }
+
+        /* 内联代码 */
+        .article-body p code, .article-body li code, .article-body td code {
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            font-size: 0.75rem;
+            background-color: #f4f4f5;
+            color: #18181b;
+            padding: 0.1rem 0.35rem;
+            border-radius: 4px;
+            border: 1px solid #e4e4e7;
+        }
+        /* 代码块 */
+        .article-body pre {
+            background-color: #fafafa;
+            border: 1px solid #e4e4e7;
+            border-radius: 6px;
+            padding: 1rem;
+            overflow-x: auto;
+            margin: 1rem 0;
+            font-size: 0.75rem;
+            line-height: 1.7;
+        }
+        .article-body pre code {
+            background: none;
+            border: none;
+            padding: 0;
+            color: #27272a;
+            font-size: 0.75rem;
+        }
+        /* 表格 */
+        .article-body table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.75rem;
+            margin: 1rem 0;
+            border: 1px solid #e4e4e7;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .article-body thead {
+            background-color: #f4f4f5;
+        }
+        .article-body thead th {
+            padding: 0.625rem 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: #71717a;
+            border-bottom: 1px solid #e4e4e7;
+        }
+        .article-body tbody tr {
+            border-bottom: 1px solid #e4e4e7;
+        }
+        .article-body tbody tr:last-child { border-bottom: none; }
+        .article-body tbody td {
+            padding: 0.625rem 1rem;
+            color: #3f3f46;
+        }
+        /* 引用块 */
+        .article-body blockquote {
+            border-left: 3px solid #d4d4d8;
+            padding-left: 1rem;
+            margin: 1rem 0;
+            color: #71717a;
+            font-size: 0.875rem;
+        }
+        /* 图片 */
+        .article-body img {
+            max-width: 100%;
+            border-radius: 6px;
+            border: 1px solid #e4e4e7;
+            margin: 1rem 0;
+        }
+        /* 分割线 */
+        .article-body hr {
+            border: none;
+            border-top: 1px solid #e4e4e7;
+            margin: 2rem 0;
+        }
+        /* 链接 */
+        .article-body a {
+            color: #3f3f46;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+        .article-body a:hover { color: #09090b; }
+
+        /* TOC 高亮当前项 */
+        .toc-link.active {
+            background-color: #f4f4f5;
+            color: #09090b;
+            font-weight: 600;
+        }
+        /* TOC h3 缩进 */
+        .toc-h3 { padding-left: 1.25rem !important; }
+        /* TOC h4 缩进 */
+        .toc-h4 { padding-left: 2.25rem !important; }
+    </style>
+</head>
+<body class="bg-white text-zinc-950 min-h-screen w-screen overflow-hidden flex">
+
+    <!-- 1. Left Fixed Sidebar (240px) -->
+    <aside class="w-[240px] h-screen fixed left-0 top-0 border-r border-zinc-200 bg-white z-40 flex flex-col">
+        <!-- Sidebar Brand -->
+        <div class="h-16 border-b border-zinc-200 flex items-center px-6 shrink-0">
+            <a href="../index.html" class="flex items-center space-x-2 hover:opacity-70 transition-opacity">
+                <span class="h-5 w-5 bg-zinc-950 rounded flex items-center justify-center text-white font-bold text-[10px]">B</span>
+                <span class="font-bold text-sm tracking-tight">Blog</span>
+            </a>
+        </div>
+        <!-- Sidebar TOC Nav -->
+        <nav id="toc-nav" class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-1">
+            <div class="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider px-3 mb-2">导航</div>
+            {{toc}}
+        </nav>
+        <div class="p-4 border-t border-zinc-200 shrink-0 text-[10px] text-zinc-400 font-mono text-center">
+            {{date}}
+        </div>
+    </aside>
+
+    <!-- 2. Right Content Area -->
+    <div class="ml-[240px] flex-1 flex flex-col h-screen min-w-0">
+
+        <!-- Header -->
+        <header class="h-16 border-b border-zinc-200 bg-white flex items-center justify-between px-8 shrink-0">
+            <h2 class="text-sm font-semibold tracking-tight text-zinc-800 truncate max-w-[70%]">{{title}}</h2>
+            <a href="../index.html" class="text-xs text-zinc-400 hover:text-zinc-700 transition-colors font-mono flex items-center gap-1">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                归档
+            </a>
+        </header>
+
+        <!-- Main Content -->
+        <div class="flex-1 overflow-y-auto p-8 bg-white" id="main-scroll">
+            <div class="max-w-3xl mx-auto space-y-8">
+
+                <!-- Article Header -->
+                <div class="border-b border-zinc-100 pb-6">
+                    <h1 class="text-3xl font-extrabold tracking-tight text-zinc-950">{{title}}</h1>
+                    <p class="text-sm text-zinc-500 mt-2">{{description}}</p>
+                    <div class="flex items-center gap-3 mt-3">
+                        <span class="text-xs text-zinc-400 font-mono">{{date}}</span>
+                    </div>
+                </div>
+
+                <!-- Article Body -->
+                <div class="article-body">
+                    {{content}}
+                </div>
+
+                <!-- Footer -->
+                <div class="border-t border-zinc-100 pt-6 flex items-center justify-between">
+                    <a href="../index.html" class="text-xs text-zinc-500 hover:text-zinc-950 transition-colors flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                        返回归档
+                    </a>
+                    <span class="text-[10px] text-zinc-300 font-mono">Blog</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // highlight.js 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 动态修正图片路径以完美兼容 Clean URLs 和 file:// 本地双击预览
+            if (window.location.protocol !== 'file:') {
+                const postSlug = '{{slug}}';
+                document.querySelectorAll('.article-body img').forEach(function(img) {
+                    const src = img.getAttribute('src');
+                    if (src && !/^(https?:|\/\/|\/)/i.test(src)) {
+                        const cleanSrc = src.replace(/^\.\//, '');
+                        // 统一指向相对 posts 目录的绝对路径或同级相对路径
+                        img.src = `../posts/${postSlug}/${cleanSrc}`;
+                    }
+                });
+            }
+
+            document.querySelectorAll('pre code').forEach(function(block) {
+                hljs.highlightElement(block);
+            });
+
+            // TOC 滚动高亮
+            const tocLinks = document.querySelectorAll('.toc-link');
+            const mainScroll = document.getElementById('main-scroll');
+            const headings = document.querySelectorAll('.article-body h2, .article-body h3, .article-body h4');
+
+            if (tocLinks.length === 0 || headings.length === 0) return;
+
+            function updateActiveToc() {
+                const scrollTop = mainScroll.scrollTop;
+                let activeIdx = 0;
+                headings.forEach(function(h, i) {
+                    if (h.offsetTop - 100 <= scrollTop) {
+                        activeIdx = i;
+                    }
+                });
+                tocLinks.forEach(function(link, i) {
+                    link.classList.toggle('active', i === activeIdx);
+                });
+            }
+
+            mainScroll.addEventListener('scroll', updateActiveToc);
+            updateActiveToc();
+        });
+    </script>
+</body>
+</html>
