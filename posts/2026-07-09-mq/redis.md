@@ -578,5 +578,194 @@ func main() {
 }
 ```
 
+配置重试，超时时间
 
+```go
+task, err := asynq.NewTask(
+	"email:send",
+	payload,
+	asynq.MaxRetry(5),
+    asynq.Timeout(3 * time.Second,),
+)
+```
+
+延迟执行
+
+```go
+client.Enqueue(
+	task,
+	asynq.ProcessIn(
+		3*time.Second,
+	),
+)
+```
+
+指定时间执行
+
+```go
+cancelTime := time.Now().Add(10*time.Second,)
+
+
+task:=asynq.NewTask(
+	"email:sendFailed",
+	payload,
+)
+
+
+client.Enqueue(task,asynq.ProcessAt(cancelTime,),)
+```
+
+定时任务
+
+```go
+
+scheduler := asynq.NewScheduler(
+    asynq.RedisClientOpt{Addr:"localhost:6380",},nil,
+)
+task := asynq.NewTask(TaskCleanup,nil,)
+
+_, err := scheduler.Register("0 0 * * *",task,)
+if err != nil { panic(err) }
+
+if err:=scheduler.Run();err!=nil{
+    panic(err)
+}
+
+```
+
+指定消息进入的队列,不指定默认进入 `default` 队列
+
+```go
+info, err := client.Enqueue(
+    EmailSendTask,
+    asynq.Queue("A"), 
+)
+```
+
+指定各个队列权重
+
+```go
+server := asynq.NewServer(
+    redisOpt,
+    asynq.Config{
+        Concurrency: 10,
+        Queues: map[string]int{
+            "A": 6, 
+            "default":  3, 
+            "B":1,
+        },
+    },
+)
+
+```
+
+查看队列中各种状态信息的情况
+
+```go
+func inspection(toFile bool) {
+	inspector := asynq.NewInspector(asynq.RedisClientOpt{
+		Addr: "127.0.0.1:6380",
+		DB:   7,
+	})
+	defer inspector.Close()
+
+	queues, err := inspector.Queues()
+	if err != nil {
+		log.Printf("[+] 获取队列列表失败: %v", err)
+		return
+	}
+
+	var writer io.Writer = os.Stdout
+	if toFile {
+		file, err := os.OpenFile("inspection.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+		if err != nil {
+			log.Printf("[+] 打开日志文件失败，默认输出到终端: %v", err)
+		} else {
+			defer file.Close()
+			writer = file
+			fmt.Printf("[+] 正在将队列统计详情写入到 inspection.log 文件中\n")
+		}
+	}
+	
+	for _, qName := range queues {
+		info, err := inspector.GetQueueInfo(qName)
+		if err != nil {
+			log.Printf("[+] 获取队列 [%s] 信息失败: %v", qName, err)
+			continue
+		}
+
+		fmt.Fprintf(writer, "\n[+] 队列 [%s] 任务详情 \n", qName)
+
+		// 检查并打印等待执行的任务
+		if info.Pending > 0 {
+			tasks, err := inspector.ListPendingTasks(qName)
+			if err == nil {
+				fmt.Fprintf(writer, "  ↳ [等待执行 (Pending) 列表 - 共 %d 个]:\n", info.Pending)
+				for _, t := range tasks {
+					fmt.Fprintf(writer, "    ID: %s | 类型: %s | 内容: %s\n", t.ID, t.Type, string(t.Payload))
+				}
+			}
+		}
+
+		// 检查并打印正在执行的任务
+		if info.Active > 0 {
+			tasks, err := inspector.ListActiveTasks(qName)
+			if err == nil {
+				fmt.Fprintf(writer, "  ↳ [正在执行 (Active) 列表 - 共 %d 个]:\n", info.Active)
+				for _, t := range tasks {
+					fmt.Fprintf(writer, "    ID: %s | 类型: %s | 内容: %s\n", t.ID, t.Type, string(t.Payload))
+				}
+			}
+		}
+
+		// 检查并打印计划/定时任务
+		if info.Scheduled > 0 {
+			tasks, err := inspector.ListScheduledTasks(qName)
+			if err == nil {
+				fmt.Fprintf(writer, "  ↳ [计划/定时 (Scheduled) 列表 - 共 %d 个]:\n", info.Scheduled)
+				for _, t := range tasks {
+					fmt.Fprintf(writer, "    ID: %s | 类型: %s | 内容: %s | 计划执行: %s\n", 
+						t.ID, t.Type, string(t.Payload), t.NextProcessAt.Format("2006-01-02 15:04:05"))
+				}
+			}
+		}
+
+		// 检查并打印重试中的任务
+		if info.Retry > 0 {
+			tasks, err := inspector.ListRetryTasks(qName)
+			if err == nil {
+				fmt.Fprintf(writer, "  ↳ [重试中 (Retry) 列表 - 共 %d 个]:\n", info.Retry)
+				for _, t := range tasks {
+					fmt.Fprintf(writer, "    ID: %s | 类型: %s | 内容: %s | 已重试: %d 次 | 错误: %s\n", 
+						t.ID, t.Type, string(t.Payload), t.Retried, t.LastErr)
+				}
+			}
+		}
+
+		// 检查并打印失败已归档的任务
+		if info.Archived > 0 {
+			tasks, err := inspector.ListArchivedTasks(qName)
+			if err == nil {
+				fmt.Fprintf(writer, "  ↳ [失败已归档 (Archived) 列表 - 共 %d 个]:\n", info.Archived)
+				for _, t := range tasks {
+					fmt.Fprintf(writer, "    ID: %s | 类型: %s | 内容: %s | 归档错误: %s\n", 
+						t.ID, t.Type, string(t.Payload), t.LastErr)
+				}
+			}
+		}
+	}
+}
+```
+
+### RabbitMQ
+
+docker 环境
+
+```
+docker run -d \
+--name rabbitmq \
+-p 5672:5672 \
+-p 15672:15672 \
+rabbitmq:3-management
+```
 
