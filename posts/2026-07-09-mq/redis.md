@@ -495,7 +495,88 @@ for _, msg := range msgs {
 
 ### Asynq 
 
+大致生产消费流程如下
 
+```go
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"context"
+	"time"
+
+	"github.com/hibiken/asynq"
+)
+
+type Email struct {
+	To      string
+	Time    time.Time
+	Subject string
+	Body    string
+}
+
+func HandleEmailTask(ctx context.Context,t *asynq.Task)error{
+	var m Email
+	if err:=json.Unmarshal(t.Payload(),&m);err!=nil{
+		return fmt.Errorf("could not Unmarshal payload: %v",err)
+	}
+	fmt.Printf("Processing email: to=%s, time=%s, subject=%s, body=%s\n",m.To,m.Time,m.Subject,m.Body)
+	return nil
+}
+
+func main() {
+	client := asynq.NewClient(&asynq.RedisClientOpt{
+		Addr: "127.0.0.1:6380",
+		DB:7,
+		Network: "tcp",
+	})
+	defer client.Close()
+
+	email := &Email{
+		To:"cby",
+		Time:time.Now(),
+		Subject:"ctf",
+		Body:"ack",
+	}
+	emailPayload,err := json.Marshal(email)
+	if err != nil {
+		fmt.Printf("Failed to marshal email:%s\n",err)
+		return
+	}
+
+	EmailSendTask := asynq.NewTask("email:send",emailPayload)
+
+	info, err := client.Enqueue(
+		EmailSendTask,
+	)
+	if err != nil {
+		fmt.Printf("Failed to enqueue task: %s\n", err)
+		return
+	}
+	fmt.Printf("Task: %s\n",EmailSendTask)
+	fmt.Printf("Enqueued task: id=%s, type=\"%s\", payload=%s\n", info.ID, info.Type, info.Payload)
+
+	server := asynq.NewServer(
+		asynq.RedisClientOpt{
+			Addr:"localhost:6380",
+			DB:7,
+			Network: "tcp",
+		},
+
+		asynq.Config{
+			Concurrency:10,
+		},
+	)
+	mux := asynq.NewServeMux()
+	// 将 email:send type 分配给 HandleEmailTask 函数去处理
+	mux.HandleFunc("email:send",HandleEmailTask)
+
+	if err:=server.Run(mux); err!=nil{
+		panic(err)
+	}
+}
+```
 
 
 
