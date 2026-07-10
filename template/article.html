@@ -18,7 +18,6 @@
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-            zoom: 1.1;
         }
         /* 隐藏滚动条但保留功能 */
         .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -26,7 +25,7 @@
 
         /* 文章内容排版 */
         .article-body h2 {
-            font-size: 1.125rem;
+            font-size: 1.25rem;
             font-weight: 700;
             color: #09090b;
             margin-top: 2.5rem;
@@ -47,27 +46,27 @@
             flex-shrink: 0;
         }
         .article-body h3 {
-            font-size: 0.9375rem;
+            font-size: 1.0625rem;
             font-weight: 600;
             color: #18181b;
             margin-top: 1.75rem;
             margin-bottom: 0.5rem;
         }
         .article-body h4 {
-            font-size: 0.875rem;
+            font-size: 0.9375rem;
             font-weight: 600;
             color: #27272a;
             margin-top: 1.25rem;
             margin-bottom: 0.375rem;
         }
         .article-body p {
-            font-size: 0.875rem;
+            font-size: 0.9375rem;
             color: #3f3f46;
             line-height: 1.8;
             margin-bottom: 0.875rem;
         }
         .article-body ul, .article-body ol {
-            font-size: 0.875rem;
+            font-size: 0.9375rem;
             color: #3f3f46;
             padding-left: 1.5rem;
             margin-bottom: 0.875rem;
@@ -82,7 +81,7 @@
         /* 内联代码 */
         .article-body p code, .article-body li code, .article-body td code {
             font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-            font-size: 0.75rem;
+            font-size: 0.8125rem;
             background-color: #f4f4f5;
             color: #18181b;
             padding: 0.1rem 0.35rem;
@@ -97,7 +96,7 @@
             padding: 1rem;
             overflow-x: auto;
             margin: 1rem 0;
-            font-size: 0.75rem;
+            font-size: 0.8125rem;
             line-height: 1.7;
         }
         .article-body pre code {
@@ -105,13 +104,13 @@
             border: none;
             padding: 0;
             color: #27272a;
-            font-size: 0.75rem;
+            font-size: 0.8125rem;
         }
         /* 表格 */
         .article-body table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 0.75rem;
+            font-size: 0.8125rem;
             margin: 1rem 0;
             border: 1px solid #e4e4e7;
             border-radius: 6px;
@@ -141,7 +140,7 @@
             padding-left: 1rem;
             margin: 1rem 0;
             color: #71717a;
-            font-size: 0.875rem;
+            font-size: 0.9375rem;
         }
         /* 图片 */
         .article-body img {
@@ -176,10 +175,10 @@
         .toc-h4 { padding-left: 2.25rem !important; }
     </style>
 </head>
-<body class="bg-white text-zinc-950 min-h-screen w-screen overflow-hidden flex">
+<body class="bg-white text-zinc-950 h-screen overflow-hidden flex">
 
-    <!-- 1. Left Fixed Sidebar (240px) -->
-    <aside class="w-[240px] h-screen fixed left-0 top-0 border-r border-zinc-200 bg-white z-40 flex flex-col">
+    <!-- 1. Left Sidebar (collapsible drawer on mobile, static on desktop) -->
+    <aside class="fixed inset-y-0 left-0 z-50 w-[240px] border-r border-zinc-200 bg-white flex flex-col transition-transform duration-300 ease-in-out -translate-x-full md:translate-x-0 md:static md:h-full md:shrink-0">
         <!-- Sidebar Brand -->
         <div class="h-16 border-b border-zinc-200 flex items-center px-6 shrink-0">
             <a href="../index.html" class="flex items-center space-x-2 hover:opacity-70 transition-opacity">
@@ -197,20 +196,29 @@
         </div>
     </aside>
 
+    <!-- Mobile Sidebar Backdrop -->
+    <div id="sidebar-backdrop" class="fixed inset-0 bg-zinc-950/20 backdrop-blur-sm z-40 hidden md:hidden transition-opacity duration-300 opacity-0"></div>
+
     <!-- 2. Right Content Area -->
-    <div class="ml-[240px] flex-1 flex flex-col h-screen min-w-0">
+    <div class="flex-1 flex flex-col h-screen min-w-0">
 
         <!-- Header -->
-        <header class="h-16 border-b border-zinc-200 bg-white flex items-center justify-between px-8 shrink-0">
-            <h2 class="text-sm font-semibold tracking-tight text-zinc-800 truncate max-w-[70%]">{{title}}</h2>
-            <a href="../index.html" class="text-xs text-zinc-400 hover:text-zinc-700 transition-colors font-mono flex items-center gap-1">
+        <header class="h-16 border-b border-zinc-200 bg-white flex items-center justify-between px-4 md:px-8 shrink-0">
+            <div class="flex items-center gap-3 min-w-0 max-w-[75%]">
+                <!-- Hamburger Menu Button -->
+                <button id="sidebar-toggle" class="p-1.5 text-zinc-500 hover:text-zinc-900 rounded-md hover:bg-zinc-100 md:hidden shrink-0" aria-label="Toggle Menu">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+                </button>
+                <h2 class="text-sm font-semibold tracking-tight text-zinc-800 truncate">{{title}}</h2>
+            </div>
+            <a href="../index.html" class="text-xs text-zinc-400 hover:text-zinc-700 transition-colors font-mono flex items-center gap-1 shrink-0">
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
                 归档
             </a>
         </header>
 
         <!-- Main Content -->
-        <div class="flex-1 overflow-y-auto p-8 bg-white" id="main-scroll">
+        <div class="flex-1 overflow-y-auto p-4 md:p-8 bg-white" id="main-scroll">
             <div class="max-w-3xl mx-auto space-y-8">
 
                 <!-- Article Header -->
@@ -257,6 +265,45 @@
 
             document.querySelectorAll('pre code').forEach(function(block) {
                 hljs.highlightElement(block);
+            });
+
+            // Mobile sidebar toggle control
+            const sidebar = document.querySelector('aside');
+            const backdrop = document.getElementById('sidebar-backdrop');
+            const toggleBtn = document.getElementById('sidebar-toggle');
+
+            function openSidebar() {
+                sidebar.classList.remove('-translate-x-full');
+                backdrop.classList.remove('hidden');
+                setTimeout(function() {
+                    backdrop.classList.remove('opacity-0');
+                    backdrop.classList.add('opacity-100');
+                }, 10);
+            }
+
+            function closeSidebar() {
+                sidebar.classList.add('-translate-x-full');
+                backdrop.classList.remove('opacity-100');
+                backdrop.classList.add('opacity-0');
+                setTimeout(function() {
+                    if (sidebar.classList.contains('-translate-x-full')) {
+                        backdrop.classList.add('hidden');
+                    }
+                }, 300);
+            }
+
+            if (toggleBtn && sidebar && backdrop) {
+                toggleBtn.addEventListener('click', openSidebar);
+                backdrop.addEventListener('click', closeSidebar);
+            }
+
+            // Auto-close sidebar on link click (mobile)
+            document.querySelectorAll('.toc-link').forEach(function(link) {
+                link.addEventListener('click', function() {
+                    if (window.innerWidth < 768) {
+                        closeSidebar();
+                    }
+                });
             });
 
             // TOC 滚动高亮
